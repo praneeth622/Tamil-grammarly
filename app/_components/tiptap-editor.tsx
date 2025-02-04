@@ -2,10 +2,8 @@
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Bold, Italic, List, Check } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { useState } from "react"
 import Grammarly from "../_grammarly/grammarly"
 import ApiKeyManager from "@/components/apikey_manager"
 
@@ -19,7 +17,7 @@ const colors = {
 }
 
 export default function TiptapEditor() {
-  const [context, setContext] = useState("Convert to formal Tamil")
+  const context ="Convert to formal Tamil"
 
   const editor = useEditor({
     extensions: [StarterKit],

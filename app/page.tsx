@@ -1,16 +1,52 @@
 "use client"
 
-import { useEditor, EditorContent, Extension } from "@tiptap/react"
-import {Suggestion} from "@tiptap/suggestion"
+import { useEditor, EditorContent, Extension, Editor } from "@tiptap/react"
+import { Suggestion } from "@tiptap/suggestion"
 import StarterKit from "@tiptap/starter-kit"
 import { ReactRenderer } from "@tiptap/react"
-import tippy from "tippy.js"
+import tippy, { Instance as TippyInstance } from "tippy.js"
 import "tippy.js/dist/tippy.css"
-import { useState, useCallback, forwardRef } from "react"
+import { useState, forwardRef } from "react"
 import ApiKeyManager from "@/components/apikey_manager"
 
+interface CommandsListProps {
+  items: string[];
+  command: (item: string) => void;
+}
+
+interface SuggestionProps {
+  query: string;
+}
+
+interface CommandProps {
+  editor: Editor;
+  range: Range;
+  props: string;
+}
+
+interface Range {
+  from: number;
+  to: number;
+}
+
+interface ReactRendererInstance {
+  element: Element;
+  ref?: {
+    onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+  };
+  updateProps: (props: Record<string, unknown>) => void;
+  destroy: () => void;
+}
+
+interface SuggestionItem {
+  items: string[];
+  command: (item: string) => void;
+  editor: Editor;
+  clientRect: () => DOMRect;
+}
+
 // Suggestion component for the dropdown
-const CommandsList = forwardRef((props, ref) => {
+const CommandsList = forwardRef<HTMLDivElement, CommandsListProps>((props, ref) => {
   return (
     <div 
       ref={ref} 
@@ -32,7 +68,7 @@ CommandsList.displayName = "CommandsList"
 
 // Suggestion configuration
 const suggestion = {
-  items: ({ query }) => {
+  items: ({ query }: SuggestionProps) => {
     const commands = ["Summarize", "Translate", "Elaborate"]
     return commands.filter(item =>
       item.toLowerCase().startsWith(query.toLowerCase())
@@ -40,15 +76,21 @@ const suggestion = {
   },
 
   render: () => {
-    let component
-    let popup
+    let component: ReactRendererInstance;
+    let popup: TippyInstance[];
 
     return {
-      onStart: props => {
+      onStart: (props: SuggestionItem) => {
+        const commandsListProps = {
+          items: props.items,
+          command: props.command,
+        };
+
+        // Create the renderer and properly type cast it
         component = new ReactRenderer(CommandsList, {
-          props,
+          props: commandsListProps,
           editor: props.editor,
-        })
+        }) as unknown as ReactRendererInstance;
 
         popup = tippy("body", {
           getReferenceClientRect: props.clientRect,
@@ -62,17 +104,22 @@ const suggestion = {
         })
       },
 
-      onUpdate(props) {
-        component?.updateProps(props)
+      onUpdate(props: SuggestionItem) {
+        const commandsListProps = {
+          items: props.items,
+          command: props.command,
+        };
         
-        popup[0].setProps({
+        component?.updateProps(commandsListProps)
+        
+        popup?.[0].setProps({
           getReferenceClientRect: props.clientRect,
         })
       },
 
-      onKeyDown(props) {
+      onKeyDown(props: { event: KeyboardEvent }) {
         if (props.event.key === "Escape") {
-          popup[0].hide()
+          popup?.[0].hide()
           return true
         }
 
@@ -80,8 +127,8 @@ const suggestion = {
       },
 
       onExit() {
-        popup[0].destroy()
-        component.destroy()
+        popup?.[0].destroy()
+        component?.destroy()
       },
     }
   },
@@ -95,7 +142,7 @@ const SlashCommands = Extension.create({
     return {
       suggestion: {
         char: "/",
-        command: ({ editor, range, props }) => {
+        command: ({ editor, range, props }: CommandProps) => {
           editor
             .chain()
             .focus()
@@ -120,14 +167,14 @@ const SlashCommands = Extension.create({
 })
 
 export default function NotionLikeEditor() {
-  const [selectedCommand, setSelectedCommand] = useState("")
+  const [selectedCommand, setSelectedCommand] = useState<string>("")
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       SlashCommands,
     ],
-    content: "<p  >Welcome to the Notion-like editor! Type / to see available commands.</p>",
+    content: "<p>Welcome to the Notion-like editor! Type / to see available commands.</p>",
     onUpdate: ({ editor }) => {
       if (!editor || !selectedCommand) return
 
@@ -142,7 +189,6 @@ export default function NotionLikeEditor() {
       
       setSelectedCommand("")
     },
-
   })
 
   if (!editor) return null

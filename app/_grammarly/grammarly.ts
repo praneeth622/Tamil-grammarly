@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class Grammarly {
-    private model: any;
+    private model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>;
     constructor(apikey: string) {
         const API_KEY = apikey;
         if (!API_KEY) {
@@ -37,7 +37,7 @@ class Grammarly {
             tamilText = textQuery.response.text().trim();
             console.log("Converted to Tamil text:", tamilText);
 
-            let correctedTextQuery = await this.model.generateContent(`
+            const correctedTextQuery = await this.model.generateContent(`
                 The following input is in Tamil and it may have grammatical errors. Correct all grammatical errors. The input: ${tamilText}. Only provide the corrected text.
                 Nothing else is required.
                 `);
@@ -47,10 +47,15 @@ class Grammarly {
             console.log("Context : ", context);
             return correctedTextQuery.response.text();
         } 
-        catch (e : any) {
-            console.error("Error in Grammarly processing:", e);
-            return `Error: ${e.message}`;
+        catch (e: unknown) {
+            if (e instanceof Error) {
+                console.error("Error in Grammarly processing:", e.message);
+                return `Error: ${e.message}`;
+            }
+            console.error("Unknown error in Grammarly processing:", e);
+            return "An unknown error occurred.";
         }
+        
     }
 
     async suggestNextSentenceTamil(text: string) {
@@ -80,26 +85,30 @@ class Grammarly {
             console.log("Summarized text:", tamilText);
             return tamilText;
         }
-        catch (e : any) {
-            console.error("Error in Grammarly processing:", e);
-            return `Error: ${e.message}`;
-        }
+        catch (e: unknown) {
+            if (e instanceof Error) {
+                console.error("Error:", e.message);
+                return `Error: ${e.message}`;
+            }
+            console.error("Unknown error:", e);
+            return "An unknown error occurred.";
+        }        
     }
 
     async translate(text: string, to_lang: string) {
         try {
-            let tamilText = text;
+            const tamilText = text;
             console.log(tamilText);
 
             const textQuery = await this.model.generateContent(`The following input is in Tamil text. Translate the text to ${to_lang}. The input: ${text}`);
 
-            let translatedText = textQuery.response.text().trim();
+            const translatedText = textQuery.response.text().trim();
             console.log("Translated text:", translatedText);
             return translatedText;
         }
-        catch (e : any) {
+        catch (e : unknown) {
             console.error("Error in Grammarly processing:", e);
-            return `Error: ${e.message}`;
+            return `Error: ${e}`;
         }
     }
     async elaborate(text : string){
